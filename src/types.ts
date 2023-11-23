@@ -6,6 +6,7 @@ export interface Point {
 export type Side = {
   key: string;
   side: [p1: Point, p2: Point];
+  thirdPoint: Point;
   otherSides: [[p2: Point, p3: Point], [p3: Point, p1: Point]];
 };
 

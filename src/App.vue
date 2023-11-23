@@ -1,31 +1,54 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import Triangle from "./entities/Triangle";
 import Particle from "./entities/Particle";
+import Triangle from "./entities/Triangle";
 
 const ANGLE_INCR = 1;
-const width = "500";
-const height = "500";
+const width = "800";
+const height = "800";
 
 let angle = 0;
+let angleSpeed = 0;
 
 const myDraw = ref();
 const ctx = ref();
+const isOver = ref(false);
 
 const triangle = new Triangle(ctx, angle);
-
 const particles: Particle[] = [];
 
 function redraw() {
   updateAngle();
-  ctx.value.clearRect(0, 0, 500, 500);
+  ctx.value.clearRect(0, 0, 800, 800);
 
   triangle.redraw(angle);
   particles.forEach((p) => p.redraw(triangle));
 }
 
 function updateAngle() {
-  angle = angle >= 360 ? 0 : angle + ANGLE_INCR;
+  if (isOver.value) {
+    if (angleSpeed < 1) {
+      angleSpeed += 0.05;
+    } else if (angleSpeed > 1) {
+      angleSpeed = 1;
+    }
+  } else {
+    if (angleSpeed >= 0.05) {
+      angleSpeed -= 0.05;
+    } else if (angleSpeed < 0) {
+      angleSpeed = 0;
+    }
+  }
+  const incr = angleSpeed * ANGLE_INCR;
+  angle = angle + incr;
+  if (angle % 60 === 0) {
+    angle = angle + incr;
+  }
+  if (angle >= 360) {
+    angle = 1;
+  }
+
+  console.log(incr);
 }
 
 function addParticle() {
@@ -39,15 +62,15 @@ onMounted(() => {
     ctx.value = canvas.getContext("2d");
 
     redraw();
-    // setInterval(() => {
-    //   redraw();
-    // }, 30);
+    setInterval(() => {
+      redraw();
+    }, 30);
   }
 });
 </script>
 
 <template>
-  <div>
+  <div @mouseenter="isOver = true" @mouseleave="isOver = false">
     <canvas ref="myDraw" :width="width" :height="height"></canvas>
     <button @click="addParticle()">+</button>
     <button @click="redraw()">>></button>

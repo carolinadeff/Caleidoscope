@@ -1,17 +1,19 @@
 import { Ref, ref } from "vue";
 import { Point } from "../types";
-import Triangle from "./Triangle";
+import Triangle, { correctPositionInPersp } from "./Triangle";
 import { purpleYellow, redGreen } from "./../assets/colors";
 import Constant from "../utils/constants";
-import { getHasIntersection, getReflection } from "../utils/reflectionUtils";
-
-let position = 0;
+import {
+  getHasIntersection,
+  getLineParams,
+  getReflection,
+} from "../utils/reflectionUtils";
 
 export default class Particle {
   triangle: Triangle;
   ctx: Ref<CanvasRenderingContext2D | undefined> = ref();
-  p: Point = { x: Constant.C_X + position, y: Constant.C_Y };
-  pPrev: Point = { x: Constant.C_X + position, y: Constant.C_Y };
+  p: Point = { x: Constant.C_X, y: Constant.C_Y };
+  pPrev: Point = { x: Constant.C_X, y: Constant.C_Y };
   index = Math.random() > 0.5 ? 1 : 0;
   palette: string[] = [purpleYellow, redGreen][this.index];
   colorIndex = 0;
@@ -39,7 +41,7 @@ export default class Particle {
 
     this.pReflectedArr.forEach(({ p }, index) => {
       if (index > 0) {
-        ctx.globalAlpha = 0.5;
+        ctx.globalAlpha = 0.3;
       }
       ctx.beginPath();
       const gradientReflected = ctx.createRadialGradient(
@@ -63,26 +65,6 @@ export default class Particle {
     });
 
     ctx.globalAlpha = 1;
-
-    ctx.beginPath();
-    const mask = ctx.createRadialGradient(
-      Constant.C_X,
-      Constant.C_Y,
-      200,
-      Constant.C_X,
-      Constant.C_Y,
-      400
-    );
-
-    // Add three color stops
-    mask.addColorStop(0, "transparent");
-    mask.addColorStop(1, "transparent");
-    mask.addColorStop(1, "white");
-
-    // Set the fill style and draw a rectangle
-    ctx.fillStyle = mask;
-    ctx.fillRect(0, 0, 800, 800);
-    ctx.fill();
   }
 
   reset() {
@@ -113,7 +95,9 @@ export default class Particle {
       arrPoints.push(...arrReflectedPoints);
     });
 
-    return arrPoints;
+    return arrPoints.map(({ p }) => ({
+      p: correctPositionInPersp(p),
+    }));
   }
 
   updateTriangle(triangle: Triangle) {
@@ -169,16 +153,16 @@ export default class Particle {
   }
 }
 
-// function reduceSpeed(side: [Point, Point], pInit: Point, pNew: Point) {
-//   const sideParams = getLineParams(...side);
-//   const pathParams = getLineParams(pInit, pNew);
+function reduceSpeed(side: [Point, Point], pInit: Point, pNew: Point) {
+  const sideParams = getLineParams(...side);
+  const pathParams = getLineParams(pInit, pNew);
 
-//   const angle = Math.atan(sideParams.a - pathParams.a);
-//   const reductionFactor = Math.cos(angle);
+  const angle = Math.atan(sideParams.a - pathParams.a);
+  const reductionFactor = Math.cos(angle);
 
-//   const x =
-//     pInit.x + (pNew.x - pInit.x) * (1 - 0.1 * Math.abs(reductionFactor));
-//   const y =
-//     pInit.y + (pNew.y - pInit.y) * (1 - 0.1 * Math.abs(reductionFactor));
-//   return { x, y };
-// }
+  const x =
+    pInit.x + (pNew.x - pInit.x) * (1 - 0.1 * Math.abs(reductionFactor));
+  const y =
+    pInit.y + (pNew.y - pInit.y) * (1 - 0.1 * Math.abs(reductionFactor));
+  return { x, y };
+}

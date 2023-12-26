@@ -20,12 +20,8 @@ class Triangle {
     }
 
     const ctx = this.ctx.value!;
-    //const colors = ["green", "blue", "purple"];
 
     this.arrTriangles.forEach((reflectedSidesEl, index) => {
-      if (index > 0) {
-        ctx.globalAlpha = 0.5;
-      }
       reflectedSidesEl.forEach(({ side }) => {
         const [pInit, pEnd] = side;
 
@@ -36,8 +32,6 @@ class Triangle {
         ctx.stroke();
       });
     });
-
-    ctx.globalAlpha = 1;
   }
 
   static getFormattedSides(
@@ -128,18 +122,28 @@ class Triangle {
 
       arrReflectionTriangleSides.forEach(({ side: [pInit, pEnd] }) => {
         arrPoints.forEach(({ p1, p2, p3 }) => {
-          arrReflectedPoints.push({
+          const newTr = {
             p1: getReflection([pInit, pEnd], p1),
             p2: getReflection([pInit, pEnd], p2),
             p3: getReflection([pInit, pEnd], p3),
-          });
+          };
+
+          arrReflectedPoints.push(newTr);
         });
       });
 
       arrPoints.push(...arrReflectedPoints);
     });
 
-    return arrPoints.map((pointsEl) => Triangle.getFormattedSides(pointsEl));
+    const arrPointsInPerspective = arrPoints.map(({ p1, p2, p3 }) => ({
+      p1: correctPositionInPersp(p1),
+      p2: correctPositionInPersp(p2),
+      p3: correctPositionInPersp(p3),
+    }));
+
+    return arrPointsInPerspective.map((pointsEl) =>
+      Triangle.getFormattedSides(pointsEl)
+    );
   }
 
   getpoint(theta: number, r: number): Point {
@@ -150,6 +154,32 @@ class Triangle {
       y: Constant.C_Y + r * Math.sin(thetaRad),
     };
   }
+}
+
+export function correctPositionInPersp(p: Point) {
+  const { x: xInit, y: yInit } = p;
+  const distPCenter =
+    Math.sqrt(
+      Math.pow(xInit - Constant.C_X, 2) + Math.pow(yInit - Constant.C_Y, 2)
+    ) - Constant.R;
+
+  const tanTheta = distPCenter / 1000;
+
+  const angle = Math.atan(tanTheta);
+  if (angle > Math.PI / 2) {
+    return p;
+  }
+  const correct = (coord: number, centerCoord: number) => {
+    const reductionFactor = 1 - angle / (Math.PI / 2);
+    const newCoord = (coord - centerCoord) * reductionFactor + centerCoord;
+
+    return newCoord;
+  };
+
+  const newX = correct(xInit, Constant.C_X);
+  const newY = correct(yInit, Constant.C_Y);
+
+  return { x: newX, y: newY };
 }
 
 export default Triangle;

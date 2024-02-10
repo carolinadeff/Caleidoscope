@@ -5,16 +5,22 @@ import { Ref, ref } from "vue";
 import { getReflection } from "../utils/reflectionUtils";
 
 class Triangle {
-  angle = 0;
+  angle: Ref<number>;
+  center: Ref<Point>;
   reflectionCount = 0;
   ctx: Ref<CanvasRenderingContext2D | undefined> = ref();
 
-  constructor(ctx: Ref<CanvasRenderingContext2D>, angle: number) {
+  constructor(
+    ctx: Ref<CanvasRenderingContext2D>,
+    angle: Ref<number>,
+    center: Ref<Point>
+  ) {
     this.ctx = ctx;
     this.angle = angle;
+    this.center = center;
   }
 
-  draw() {
+  redraw() {
     if (!this.ctx.value) {
       return;
     }
@@ -32,6 +38,12 @@ class Triangle {
         ctx.stroke();
       });
     });
+  }
+
+  getParticleLimitsSides(r: number) {
+    const innerR = Constant.R - r / Math.cos(Math.PI / 3);
+    const innerPoints = this.getPoints(innerR);
+    return Triangle.getFormattedSides(innerPoints);
   }
 
   static getFormattedSides(
@@ -70,15 +82,6 @@ class Triangle {
     ];
   }
 
-  redraw(angle: number) {
-    this.updateAngle(angle);
-    this.draw();
-  }
-
-  updateAngle(angle: number): void {
-    this.angle = angle;
-  }
-
   get points() {
     return this.getPoints();
   }
@@ -95,14 +98,14 @@ class Triangle {
       .map((_, index) => {
         const r = Math.pow(2, index) * reflectionUnit;
         const angleIncr = index % 2 === 0 ? 0 : 180;
-        const angle = this.angle + angleIncr;
+        const angle = this.angle.value + angleIncr;
 
         return this.getPoints(r, angle);
       });
     return arr;
   }
 
-  getPoints(r = Constant.R, angle = this.angle) {
+  getPoints(r = Constant.R, angle = this.angle.value) {
     return {
       p1: this.getpoint(angle + 0, r),
       p2: this.getpoint(angle + 120, r),
@@ -136,9 +139,9 @@ class Triangle {
     });
 
     const arrPointsInPerspective = arrPoints.map(({ p1, p2, p3 }) => ({
-      p1: correctPositionInPersp(p1),
-      p2: correctPositionInPersp(p2),
-      p3: correctPositionInPersp(p3),
+      p1: correctPositionInPersp(p1, this.center.value),
+      p2: correctPositionInPersp(p2, this.center.value),
+      p3: correctPositionInPersp(p3, this.center.value),
     }));
 
     return arrPointsInPerspective.map((pointsEl) =>
@@ -150,18 +153,17 @@ class Triangle {
     const thetaRad = angleRad(theta);
 
     return {
-      x: Constant.C_X + r * Math.cos(thetaRad),
-      y: Constant.C_Y + r * Math.sin(thetaRad),
+      x: this.center.value.x + r * Math.cos(thetaRad),
+      y: this.center.value.y + r * Math.sin(thetaRad),
     };
   }
 }
 
-export function correctPositionInPersp(p: Point) {
+export function correctPositionInPersp(p: Point, center: Point) {
   const { x: xInit, y: yInit } = p;
   const distPCenter =
-    Math.sqrt(
-      Math.pow(xInit - Constant.C_X, 2) + Math.pow(yInit - Constant.C_Y, 2)
-    ) - Constant.R;
+    Math.sqrt(Math.pow(xInit - center.x, 2) + Math.pow(yInit - center.y, 2)) -
+    Constant.R;
 
   const tanTheta = distPCenter / 1000;
 
@@ -176,8 +178,8 @@ export function correctPositionInPersp(p: Point) {
     return newCoord;
   };
 
-  const newX = correct(xInit, Constant.C_X);
-  const newY = correct(yInit, Constant.C_Y);
+  const newX = correct(xInit, center.x);
+  const newY = correct(yInit, center.y);
 
   return { x: newX, y: newY };
 }

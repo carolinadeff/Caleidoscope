@@ -2,7 +2,6 @@ import { Ref, ref } from "vue";
 import { Point } from "../types";
 import Triangle, { correctPositionInPersp } from "./Triangle";
 import { purpleYellow, redGreen } from "./../assets/colors";
-import Constant from "../utils/constants";
 import {
   getHasIntersection,
   getLineParams,
@@ -12,16 +11,37 @@ import {
 export default class Particle {
   triangle: Triangle;
   ctx: Ref<CanvasRenderingContext2D | undefined> = ref();
-  p: Point = { x: Constant.C_X, y: Constant.C_Y };
-  pPrev: Point = { x: Constant.C_X, y: Constant.C_Y };
+  p: Point;
+  pPrev: Point;
   index = Math.random() > 0.5 ? 1 : 0;
   palette: string[] = [purpleYellow, redGreen][this.index];
   colorIndex = 0;
+  acY: number;
+  r: number;
 
   constructor(ctx: Ref<CanvasRenderingContext2D>, triangle: Triangle) {
     this.triangle = triangle;
     this.ctx = ctx;
     this.palette = [...this.palette];
+
+    this.p = triangle.center.value;
+    this.pPrev = triangle.center.value;
+
+    this.acY = this.getParticleAc();
+    this.r = this.getParticleR();
+  }
+
+  getParticleAc() {
+    let ac = 0;
+    while (ac < 0.05 || ac >= 0.3) {
+      ac = Math.floor(Math.random() * 100) / 100;
+    }
+
+    return ac;
+  }
+
+  getParticleR() {
+    return [8, 13, 14, 18].find(() => Math.random() > 0.5) ?? 14;
   }
 
   redraw(triangle: Triangle) {
@@ -50,7 +70,7 @@ export default class Particle {
         1,
         p.x,
         p.y,
-        10
+        this.r
       );
 
       // Add three color stops
@@ -60,7 +80,7 @@ export default class Particle {
 
       // Set the fill style and draw a rectangle
       ctx.fillStyle = gradientReflected;
-      ctx.arc(p.x, p.y, 10, 0, Math.PI * 2, true);
+      ctx.arc(p.x, p.y, this.r, 0, Math.PI * 2, true);
       ctx.fill();
     });
 
@@ -69,8 +89,8 @@ export default class Particle {
 
   reset() {
     if (this.p?.x > 800 || this.p?.y > 800 || this.p?.x < 0 || this.p?.y < 0) {
-      this.p = { x: Constant.C_X, y: Constant.C_Y };
-      this.pPrev = { x: Constant.C_X, y: Constant.C_Y };
+      this.p = this.triangle.center.value;
+      this.pPrev = this.triangle.center.value;
     }
   }
 
@@ -96,7 +116,7 @@ export default class Particle {
     });
 
     return arrPoints.map(({ p }) => ({
-      p: correctPositionInPersp(p),
+      p: correctPositionInPersp(p, this.triangle.center.value),
     }));
   }
 
@@ -115,16 +135,16 @@ export default class Particle {
   }
 
   updatePosition() {
-    const pCenter: Point = { x: Constant.C_X, y: Constant.C_Y };
+    const pCenter: Point = this.triangle.center.value;
 
     let pNew: Point = {
       x: this.p.x + (this.p.x - this.pPrev.x),
-      y: this.p.y + (this.p.y - this.pPrev.y) + Constant.AC_Y,
+      y: this.p.y + (this.p.y - this.pPrev.y) + this.acY,
     };
 
-    const mainTriangleSides = Triangle.getFormattedSides(this.triangle.points);
+    const adaptedSides = this.triangle.getParticleLimitsSides(this.r);
 
-    mainTriangleSides.forEach(({ side, otherSides }) => {
+    adaptedSides.forEach(({ side, otherSides }) => {
       const intersection = getHasIntersection(side, [pCenter, pNew]);
       if (intersection) {
         this.updateColorIndex();

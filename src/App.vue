@@ -2,18 +2,17 @@
 import { onMounted, ref } from "vue";
 import Particle from "./entities/Particle";
 import Triangle from "./entities/Triangle";
-
-const ANGLE_INCR = 1;
-
-let angle = 0;
-let angleSpeed = 0;
+import { useUpdateAngle } from "./composables/useUpdateAngle";
 
 const myDraw = ref();
 const ctx = ref();
-const isOver = ref(false);
-const container = ref<HTMLDivElement>();
 
-const triangle = new Triangle(ctx, angle);
+const container = ref<HTMLDivElement>();
+const { angle, center, updateAngle, callbacks } = useUpdateAngle();
+const { onMouseDown, onMouseEnter, onMouseLeave, onMouseMove, onMouseUp } =
+  callbacks;
+
+const triangle = new Triangle(ctx, angle, center);
 const particles: Particle[] = [];
 
 function redraw() {
@@ -21,32 +20,8 @@ function redraw() {
   const { width, height } = myDraw.value!;
   ctx.value.clearRect(0, 0, width, height);
 
-  triangle.redraw(angle);
+  triangle.redraw();
   particles.forEach((p) => p.redraw(triangle));
-}
-
-function updateAngle() {
-  if (isOver.value) {
-    if (angleSpeed < 1) {
-      angleSpeed += 0.05;
-    } else if (angleSpeed > 1) {
-      angleSpeed = 1;
-    }
-  } else {
-    if (angleSpeed >= 0.05) {
-      angleSpeed -= 0.05;
-    } else if (angleSpeed < 0) {
-      angleSpeed = 0;
-    }
-  }
-  const incr = angleSpeed * ANGLE_INCR;
-  angle = angle + incr;
-  if (angle % 60 === 0) {
-    angle = angle + incr;
-  }
-  if (angle >= 360) {
-    angle = 1;
-  }
 }
 
 function addParticle() {
@@ -78,17 +53,16 @@ onMounted(() => {
 
 <template>
   <div ref="container" class="container">
-    <canvas
-      @mouseenter="isOver = true"
-      @mouseleave="isOver = false"
-      ref="myDraw"
-    ></canvas>
+    <canvas ref="myDraw"></canvas>
     <div class="elements-layer">
       <div
         ref="lens"
         class="lens"
-        @mouseenter="isOver = true"
-        @mouseleave="isOver = false"
+        @mouseenter="onMouseEnter"
+        @mouseleave="onMouseLeave"
+        @mousedown="onMouseDown"
+        @mouseup="onMouseUp"
+        @mousemove="onMouseMove"
       ></div>
     </div>
     <div class="actions">

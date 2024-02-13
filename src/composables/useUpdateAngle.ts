@@ -1,104 +1,109 @@
-import { ref } from "vue";
+import { onMounted, ref, Ref } from "vue";
 import { Point } from "../types";
 
-const ANGLE_INCR = 1;
-export const useUpdateAngle = () => {
-  const angle = ref(0);
+const V_MAX = 8;
+
+export const useUpdateAngle = (myDraw: Ref<HTMLCanvasElement | undefined>) => {
+  const angle = ref(1);
   const isOver = ref(false);
   const isMouseDown = ref(false);
   const angleSpeed = ref(0);
-  const mouseMovement = ref<MouseEvent | undefined>();
+  let mouseP: Point | undefined;
+  let lastMouseP: Point | undefined;
+  const spun = ref(false);
 
-  const center = ref<Point>({ x: 400, y: 400 });
+  const center = ref<Point>({ x: 0, y: 0 });
 
-  function updateAngle() {
-    const v = updateAngleSpeed(angleSpeed.value);
-    console.log(v);
+  onMounted(() => {
+    setCenter();
+  });
 
-    angleSpeed.value = v!;
+  window.onresize = () => {
+    setCenter();
+  };
 
-    const incr = angleSpeed.value * ANGLE_INCR;
-    angle.value = angle.value + incr;
-    if (angle.value % 60 === 0) {
-      angle.value = angle.value + incr;
+  function setCenter() {
+    if (!myDraw.value) {
+      return;
     }
-    if (angle.value >= 360) {
-      angle.value = 1;
-    }
+
+    center.value.x = myDraw.value.clientWidth / 2;
+    center.value.y = myDraw.value.clientHeight / 2;
   }
 
-  function updateAngleSpeed(v: number) {
-    if (!isMouseDown.value) {
-      if (v <= 0.01 && v >= -0.01) {
-        return 0;
-      }
+  function getFreeV(v: number) {
+    return v * (1 - 0.05 * (Math.abs(v) / V_MAX));
+  }
 
-      return 0.99 * v;
+  function updateAngle() {
+    let v = angleSpeed.value;
+
+    if (!isMouseDown.value || !mouseP || !lastMouseP) {
+      v = Math.abs(v) > 0.005 ? getFreeV(v) : 0;
+    } else {
+      const tanRtoP = (center.value.y - mouseP.y) / (center.value.x - mouseP.x);
+      const tanRtoLastP =
+        (center.value.y - lastMouseP.y) / (center.value.x - lastMouseP.x);
+
+      if (isFinite(tanRtoP) && isFinite(tanRtoLastP)) {
+        const alphaRToP = Math.atan(tanRtoP);
+        const alphaRToLastP = Math.atan(tanRtoLastP);
+
+        const alpha = alphaRToP - alphaRToLastP;
+        const alphaDeg = alpha * (180 / Math.PI);
+
+        v = alphaDeg;
+      }
     }
 
-    if (!mouseMovement.value) {
-      return v;
+    angleSpeed.value = Math.min(V_MAX, v);
+
+    let newAngle = angle.value + angleSpeed.value;
+
+    if (newAngle % 60 === 0) {
+      newAngle = newAngle + 0.1;
+    }
+    if (newAngle > 360) {
+      newAngle = newAngle - 360;
     }
 
-    const { offsetX, offsetY, movementX, movementY } = mouseMovement.value;
-
-    try {
-      if (movementX === 0 && movementY === 0) {
-        return 0;
-      }
-
-      const tanRtoP = (center.value.y - offsetY) / (center.value.x - offsetX);
-
-      if (!isFinite(tanRtoP)) {
-        return v;
-      }
-
-      const tanNormal = -1 / tanRtoP;
-      const alphaN = Math.atan(tanNormal);
-
-      const tanMovement = movementY / movementX;
-      const alphaMovement = Math.atan(tanMovement);
-
-      const alpha = alphaN - alphaMovement;
-
-      const vMouse = Math.sqrt(Math.pow(movementX, 2) + Math.pow(movementY, 2));
-
-      let vMouseComponent = vMouse * Math.cos(alpha);
-      if (vMouseComponent > 2) {
-        vMouseComponent = 2;
-      }
-      if (vMouseComponent < -2) {
-        vMouseComponent = -2;
-      }
-
-      return vMouseComponent;
-    } catch (err) {
-      console.error(err);
-    }
+    angle.value = newAngle;
   }
 
   const callbacks = {
-    onMouseEnter: (event: MouseEvent) => {
+    onMouseEnter: () => {
       isOver.value = true;
     },
-    onMouseDown: (event: MouseEvent) => {
-      isMouseDown.value = true;
-      mouseMovement.value = event;
-    },
-    onMouseMove: (event: MouseEvent) => {
-      if (isMouseDown.value) {
-        mouseMovement.value = event;
-      }
-    },
-    onMouseUp: (event: MouseEvent) => {
-      isMouseDown.value = false;
-      mouseMovement.value = event;
-    },
-    onMouseLeave: (event: MouseEvent) => {
+    onMouseLeave: () => {
       isOver.value = false;
 
       isMouseDown.value = false;
-      mouseMovement.value = undefined;
+      mouseP = undefined;
+      lastMouseP = undefined;
+    },
+    onMouseDown: (event: MouseEvent) => {
+      isMouseDown.value = true;
+
+      const { offsetX, offsetY } = event;
+      mouseP = { x: offsetX, y: offsetY };
+      lastMouseP = { x: offsetX, y: offsetY };
+    },
+    onMouseUp: () => {
+      isMouseDown.value = false;
+      mouseP = undefined;
+      lastMouseP = undefined;
+    },
+    onMouseMove: (event: MouseEvent) => {
+      if (isMouseDown.value) {
+        if (!spun.value) {
+          spun.value = true;
+        }
+
+        lastMouseP = mouseP;
+
+        const { offsetX, offsetY } = event;
+        mouseP = { x: offsetX, y: offsetY };
+      }
     },
   };
 
@@ -107,5 +112,6 @@ export const useUpdateAngle = () => {
     angle,
     center,
     callbacks,
+    spun,
   };
 };

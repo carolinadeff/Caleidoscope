@@ -2,11 +2,7 @@ import { Ref, ref } from "vue";
 import { Point } from "../types";
 import Triangle, { correctPositionInPersp } from "./Triangle";
 import { purpleYellow, redGreen } from "./../assets/colors";
-import {
-  getHasIntersection,
-  getLineParams,
-  getReflection,
-} from "../utils/reflectionUtils";
+import { getHasIntersection, getReflection } from "../utils/reflectionUtils";
 
 export default class Particle {
   triangle: Triangle;
@@ -15,7 +11,9 @@ export default class Particle {
   pPrev: Point;
   index = Math.random() > 0.5 ? 1 : 0;
   palette: string[] = [purpleYellow, redGreen][this.index];
-  colorIndex = 0;
+  colorIndex = this.getColorIndex();
+  color1 = this.palette[this.colorIndex + 3];
+  color2 = this.palette[this.colorIndex];
   acY: number;
   r: number;
 
@@ -61,7 +59,7 @@ export default class Particle {
 
     this.pReflectedArr.forEach(({ p }, index) => {
       if (index > 0) {
-        ctx.globalAlpha = 0.3;
+        ctx.globalAlpha = 0.4;
       }
       ctx.beginPath();
       const gradientReflected = ctx.createRadialGradient(
@@ -74,9 +72,8 @@ export default class Particle {
       );
 
       // Add three color stops
-
-      gradientReflected.addColorStop(0.9, this.palette[this.colorIndex + 3]);
-      gradientReflected.addColorStop(0.1, this.palette[this.colorIndex]);
+      gradientReflected.addColorStop(0.9, this.color1);
+      gradientReflected.addColorStop(0.1, this.color2);
 
       // Set the fill style and draw a rectangle
       ctx.fillStyle = gradientReflected;
@@ -124,14 +121,20 @@ export default class Particle {
     this.triangle = triangle;
   }
 
-  updateColorIndex() {
+  // updateColorIndex() {
+  //   const lastIndex = this.palette.length - 1;
+  //   if (this.colorIndex >= lastIndex - 3) {
+  //     this.palette = this.palette.reverse();
+  //     this.colorIndex = 0;
+  //   } else {
+  //     this.colorIndex += 1;
+  //   }
+  // }
+
+  getColorIndex() {
     const lastIndex = this.palette.length - 1;
-    if (this.colorIndex >= lastIndex - 3) {
-      this.palette = this.palette.reverse();
-      this.colorIndex = 0;
-    } else {
-      this.colorIndex += 1;
-    }
+
+    return Math.floor(Math.random() * (lastIndex - 3));
   }
 
   updatePosition() {
@@ -147,11 +150,9 @@ export default class Particle {
     adaptedSides.forEach(({ side, otherSides }) => {
       const intersection = getHasIntersection(side, [pCenter, pNew]);
       if (intersection) {
-        this.updateColorIndex();
+        //this.updateColorIndex();
         this.p = getReflection(side, this.p);
         pNew = getReflection(side, pNew);
-
-        //pNew = reduceSpeed(side, this.p, pNew);
 
         otherSides.forEach((otherSide) => {
           const otherIntersection = getHasIntersection(otherSide, [
@@ -161,10 +162,10 @@ export default class Particle {
           if (otherIntersection) {
             this.p = getReflection(otherSide, this.p);
             pNew = getReflection(otherSide, pNew);
-
-            //pNew = reduceSpeed(side, this.p, pNew);
           }
         });
+
+        pNew = reduceSpeed(side, this.p, pNew);
       }
     });
 
@@ -174,11 +175,13 @@ export default class Particle {
 }
 
 function reduceSpeed(side: [Point, Point], pInit: Point, pNew: Point) {
-  const sideParams = getLineParams(...side);
-  const pathParams = getLineParams(pInit, pNew);
+  // const sideParams = getLineParams(...side);
+  // const pathParams = getLineParams(pInit, pNew);
 
-  const angle = Math.atan(sideParams.a - pathParams.a);
-  const reductionFactor = Math.cos(angle);
+  // const angle = Math.atan(sideParams.a - pathParams.a);
+  // const reductionFactor = Math.cos(angle);
+  side;
+  const reductionFactor = 0.99;
 
   const x =
     pInit.x + (pNew.x - pInit.x) * (1 - 0.1 * Math.abs(reductionFactor));

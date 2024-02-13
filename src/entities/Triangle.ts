@@ -27,16 +27,67 @@ class Triangle {
 
     const ctx = this.ctx.value!;
 
-    this.arrTriangles.forEach((reflectedSidesEl, index) => {
-      reflectedSidesEl.forEach(({ side }) => {
-        const [pInit, pEnd] = side;
+    this.arrTriangles.forEach(({ points, sides, rc }, index) => {
+      // using points
+      const { p1, p2, p3 } = points;
+      const path = new Path2D();
+      path.moveTo(p1.x, p1.y);
+      path.lineTo(p2.x, p2.y);
+      path.lineTo(p3.x, p3.y);
+      path.closePath();
 
-        ctx.beginPath();
-        ctx.moveTo(pInit.x, pInit.y);
-        ctx.lineTo(pEnd.x, pEnd.y);
-        ctx.strokeStyle = "grey";
-        ctx.stroke();
-      });
+      const r = index === 0 ? 0 : rc;
+
+      let outterR = r + 300;
+      if (r > 200) {
+        outterR = r + 220;
+      }
+
+      if (r > 300) {
+        outterR = r + 170;
+      }
+
+      if (r > 400) {
+        outterR = r + 120;
+      }
+
+      if (r > 500) {
+        outterR = r + 80;
+      }
+
+      if (index > 0) {
+        const gradientfill = ctx.createRadialGradient(
+          this.center.value.x,
+          this.center.value.y,
+          r - 60,
+          this.center.value.x,
+          this.center.value.y,
+          outterR
+        );
+
+        gradientfill.addColorStop(0.1, "#f5f5f5");
+        gradientfill.addColorStop(0.9, "#ddd");
+        ctx.fillStyle = gradientfill;
+        ctx.fill(path);
+        ctx.strokeStyle = "#eaeaea";
+        ctx.stroke(path);
+      } else {
+        ctx.fillStyle = "#f5f5f5";
+        ctx.fill(path);
+        ctx.strokeStyle = "#c4bfd9";
+        ctx.stroke(path);
+      }
+
+      //using sides
+      // sides.forEach(({ side }) => {
+      //   const [pInit, pEnd] = side;
+
+      //   ctx.beginPath();
+      //   ctx.moveTo(pInit.x, pInit.y);
+      //   ctx.lineTo(pEnd.x, pEnd.y);
+      //   ctx.strokeStyle = "#EADCE7";
+      //   ctx.stroke();
+      // });
     });
   }
 
@@ -144,9 +195,22 @@ class Triangle {
       p3: correctPositionInPersp(p3, this.center.value),
     }));
 
-    return arrPointsInPerspective.map((pointsEl) =>
-      Triangle.getFormattedSides(pointsEl)
-    );
+    const getRc = ({ p1, p2, p3 }: Record<"p1" | "p2" | "p3", Point>) => {
+      const triangleC = {
+        x: (p1.x + p2.x + p3.x) / 3,
+        y: (p1.y + p2.y + p3.y) / 3,
+      };
+      return Math.sqrt(
+        Math.pow(triangleC.x - this.center.value.x, 2) +
+          Math.pow(triangleC.y - this.center.value.y, 2)
+      );
+    };
+
+    return arrPointsInPerspective.map((pointsEl) => ({
+      points: pointsEl,
+      sides: Triangle.getFormattedSides(pointsEl),
+      rc: getRc(pointsEl),
+    }));
   }
 
   getpoint(theta: number, r: number): Point {

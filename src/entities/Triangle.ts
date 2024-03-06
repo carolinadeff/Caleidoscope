@@ -2,7 +2,7 @@ import { angleRad } from "../utils/angleUtils";
 import { Point, Side } from "../types";
 import Constant from "../utils/constants";
 import { Ref, ref } from "vue";
-import { getReflection } from "../utils/reflectionUtils";
+import { getLineParams, getReflection } from "../utils/reflectionUtils";
 
 class Triangle {
   angle: Ref<number>;
@@ -24,70 +24,98 @@ class Triangle {
     if (!this.ctx.value) {
       return;
     }
-
     const ctx = this.ctx.value!;
 
-    this.arrTriangles.forEach(({ points, sides, rc }, index) => {
-      // using points
+    const formattedTriangles = this.arrTriangles
+      .sort((tr1, tr2) => {
+        if (tr1.rc < tr2.rc) {
+          return -1;
+        }
+        if (tr1.rc > tr2.rc) {
+          return 1;
+        }
+        return 0;
+      })
+      .reverse();
+
+    formattedTriangles.forEach(({ points, rc, tc }) => {
+      const { p1, p2, p3 } = points;
+
+      const subTriangles: Record<any, Point>[] = [
+        { p1, p2, p3 },
+        { p2, p3, p1 },
+        { p3, p1, p2 },
+      ];
+
+      subTriangles.forEach((subTriangleEl: Record<any, Point>) => {
+        const [p1, p2, pOp] = Object.values(subTriangleEl);
+        const { x: xc, y: yc } = this.center.value;
+
+        const rp1 = Math.sqrt(Math.pow(p1.x - xc, 2) + Math.pow(p1.y - yc, 2));
+        const rp2 = Math.sqrt(Math.pow(p2.x - xc, 2) + Math.pow(p2.y - yc, 2));
+        if (rp1 > rc || rp2 > rc) {
+          const { a, b, constantX } = getLineParams(p1, p2);
+          let tcProjectionX;
+          let tcProjectionY;
+          if (constantX) {
+            tcProjectionX = constantX;
+            tcProjectionY = pOp.y;
+          } else {
+            const aPerp = -1 / a;
+            const bPerp = pOp.y - aPerp * pOp.x;
+            tcProjectionX = (b! - bPerp) / (aPerp - a);
+            tcProjectionY = a * tcProjectionX + b!;
+          }
+
+          const path = new Path2D();
+          path.moveTo(p1.x, p1.y);
+          path.lineTo(p2.x, p2.y);
+          path.lineTo(this.center.value.x, this.center.value.y);
+          path.closePath();
+          const gradientFill = ctx.createLinearGradient(
+            tcProjectionX,
+            tcProjectionY,
+            pOp.x,
+            pOp.y
+          );
+
+          const endColorStop = Math.max(Math.min(rc / 300, 1), 0.2);
+          gradientFill.addColorStop(0.01, "#2b4030");
+          gradientFill.addColorStop(endColorStop, Constant.BG_COLOR);
+          ctx.fillStyle = gradientFill;
+          ctx.fill(path);
+        }
+      });
+
+      const pathShadow = new Path2D();
+
+      ctx.lineWidth = 5;
+      ctx.save();
+      ctx.shadowColor = "black";
+      ctx.shadowBlur = 50;
+      ctx.shadowOffsetX = -(tc.x - this.center.value.x) / 40;
+      ctx.shadowOffsetY = -(tc.y - this.center.value.y) / 40;
+
+      pathShadow.moveTo(p1.x, p1.y);
+      pathShadow.lineTo(p2.x, p2.y);
+      pathShadow.lineTo(p3.x, p3.y);
+      pathShadow.closePath();
+      ctx.stroke(pathShadow);
+      ctx.restore();
+    });
+
+    ctx.lineWidth = 5;
+    this.arrTriangles.forEach(({ points }) => {
       const { p1, p2, p3 } = points;
       const path = new Path2D();
+
+      ctx.strokeStyle = "#97b09d";
+      ctx.lineWidth = 5;
       path.moveTo(p1.x, p1.y);
       path.lineTo(p2.x, p2.y);
       path.lineTo(p3.x, p3.y);
       path.closePath();
-
-      const r = index === 0 ? 0 : rc;
-
-      let outterR = r + 300;
-      if (r > 200) {
-        outterR = r + 220;
-      }
-
-      if (r > 300) {
-        outterR = r + 170;
-      }
-
-      if (r > 400) {
-        outterR = r + 120;
-      }
-
-      if (r > 500) {
-        outterR = r + 80;
-      }
-
-      if (index > 0) {
-        const gradientfill = ctx.createRadialGradient(
-          this.center.value.x,
-          this.center.value.y,
-          r - 60,
-          this.center.value.x,
-          this.center.value.y,
-          outterR
-        );
-
-        gradientfill.addColorStop(0.1, "#f5f5f5");
-        gradientfill.addColorStop(0.9, "#ddd");
-        ctx.fillStyle = gradientfill;
-        ctx.fill(path);
-        ctx.strokeStyle = "#eaeaea";
-        ctx.stroke(path);
-      } else {
-        ctx.fillStyle = "#f5f5f5";
-        ctx.fill(path);
-        ctx.strokeStyle = "#c4bfd9";
-        ctx.stroke(path);
-      }
-
-      //using sides
-      // sides.forEach(({ side }) => {
-      //   const [pInit, pEnd] = side;
-
-      //   ctx.beginPath();
-      //   ctx.moveTo(pInit.x, pInit.y);
-      //   ctx.lineTo(pEnd.x, pEnd.y);
-      //   ctx.strokeStyle = "#EADCE7";
-      //   ctx.stroke();
-      // });
+      ctx.stroke(path);
     });
   }
 
@@ -196,21 +224,34 @@ class Triangle {
     }));
 
     const getRc = ({ p1, p2, p3 }: Record<"p1" | "p2" | "p3", Point>) => {
-      const triangleC = {
+      const tc = {
         x: (p1.x + p2.x + p3.x) / 3,
         y: (p1.y + p2.y + p3.y) / 3,
       };
-      return Math.sqrt(
-        Math.pow(triangleC.x - this.center.value.x, 2) +
-          Math.pow(triangleC.y - this.center.value.y, 2)
+
+      const rc = Math.sqrt(
+        Math.pow(tc.x - this.center.value.x, 2) +
+          Math.pow(tc.y - this.center.value.y, 2)
       );
+      return {
+        rc,
+        tc,
+      };
     };
 
-    return arrPointsInPerspective.map((pointsEl) => ({
-      points: pointsEl,
-      sides: Triangle.getFormattedSides(pointsEl),
-      rc: getRc(pointsEl),
-    }));
+    const cvsWidth = 2 * this.center.value.x;
+
+    return arrPointsInPerspective
+      .filter((pointsEl) => {
+        const { rc } = getRc(pointsEl);
+        //remove se não está no círculo visível
+        return rc < this.center.value.x + 20;
+      })
+      .map((pointsEl) => ({
+        points: pointsEl,
+        sides: Triangle.getFormattedSides(pointsEl),
+        ...getRc(pointsEl),
+      }));
   }
 
   getpoint(theta: number, r: number): Point {

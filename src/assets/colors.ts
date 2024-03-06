@@ -27,4 +27,4 @@ export const purpleYellow = [
   "#FAED80",
 ];
 
-export default { redGreen, purpleYellow };
+export const pallete = [...redGreen, ...purpleYellow];

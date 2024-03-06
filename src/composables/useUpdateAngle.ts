@@ -32,7 +32,7 @@ export const useUpdateAngle = (myDraw: Ref<HTMLCanvasElement | undefined>) => {
   }
 
   function getFreeV(v: number) {
-    return v * (1 - 0.05 * (Math.abs(v) / V_MAX));
+    return v * (1 - 0.01 * (Math.abs(v) / V_MAX));
   }
 
   function updateAngle() {

@@ -70,40 +70,64 @@ onMounted(() => {
   <div ref="container" class="container">
     <canvas ref="myDraw"></canvas>
     <div class="elements-layer">
-      <div
-        ref="lens"
-        class="lens"
-        @mouseenter="onMouseEnter"
-        @mouseleave="onMouseLeave"
-        @mousedown="onMouseDown"
-        @mouseup="onMouseUp"
-        @mousemove="onMouseMove"
-      >
-        <div :class="{ spun }" class="spin-sign">Hold And Spin</div>
-      </div>
-    </div>
-    <div class="actions">
-      <button
-        class="add-button"
-        :class="{ text: sign.addParticle }"
-        :disabled="addDisabled"
-        @click="addParticle()"
-      >
-        <span class="plus-container">+</span>
-        <span class="text-container" :class="{ hidden: !sign.addParticle }"
-          >Click here to add beed</span
+      <div class="lens-container">
+        <div class="lens-background"></div>
+        <div
+          ref="lens"
+          class="lens"
+          @mouseenter="onMouseEnter"
+          @mouseleave="onMouseLeave"
+          @mousedown="onMouseDown"
+          @mouseup="onMouseUp"
+          @mousemove="onMouseMove"
         >
-      </button>
+          <button
+            class="add-button info"
+            :class="{ text: sign.addParticle }"
+            :disabled="addDisabled"
+            @click="addParticle()"
+          >
+            <span class="plus-container">+</span>
+            <span class="text-container" :class="{ hidden: !sign.addParticle }"
+              >Click here to add beed</span
+            >
+          </button>
+          <div :class="{ spun }" class="spin-sign info">Hold And Spin</div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped lang="scss">
 .container {
+  * {
+    font-family: "Varela Round";
+    font-size: 22px;
+    overflow: hidden;
+    white-space: nowrap;
+    color: var(--text);
+    font-weight: bold;
+  }
   position: relative;
   display: flex;
   justify-content: center;
-  background: white;
+  background: var(--bg-color);
+
+  .info {
+    min-width: 80px;
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 0 28px;
+    border-radius: 50px;
+    border: none;
+    backdrop-filter: blur(15px);
+    background-color: var(--bg-color-025);
+    transition: all ease 0.5s;
+  }
 
   .elements-layer {
     position: absolute;
@@ -114,88 +138,90 @@ onMounted(() => {
     display: flex;
     justify-content: center;
 
+    .lens-container {
+      position: relative;
+      height: 100%;
+      width: auto;
+      aspect-ratio: 1 / 1;
+    }
+
+    .lens-background {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      -webkit-mask: radial-gradient(
+        circle,
+        #0000 50px,
+        rgba(0, 0, 0, 0.7) 300px
+      );
+      backdrop-filter: blur(7px);
+    }
+
     .lens {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       background: radial-gradient(
         transparent 0%,
-        transparent 55%,
-        white 70%,
-        white 100%
+        transparent 60%,
+        var(--bg-color) 71%,
+        var(--bg-color) 100%
       );
+
       height: 100%;
       width: auto;
       aspect-ratio: 1 / 1;
 
-      display: flex;
+      padding: 50px;
+      display: grid;
+      grid-template-columns: 1fr;
+      grid-template-rows: 80px 1fr 80px;
+      flex-direction: column;
+      justify-items: center;
       align-items: center;
-      justify-content: center;
+
+      .add-button {
+        border: none;
+        width: min-content;
+        justify-self: start;
+
+        &.text {
+          width: 300px;
+        }
+
+        .plus-container {
+          user-select: none;
+          font-weight: bolder;
+          font-size: 40px;
+        }
+
+        .text-container {
+          font-size: 20px;
+          user-select: none;
+          &.hidden {
+            animation-duration: 500ms;
+            animation-name: animatesign;
+            animation-fill-mode: both;
+          }
+        }
+      }
+      .add-button:disabled {
+        display: none;
+      }
 
       .spin-sign {
-        border-radius: 50px;
-        border: none;
-        background: #fefefe;
         width: fit-content;
         height: fit-content;
-        color: #9570ba;
-        font-size: 24px;
-        box-shadow: 0 0 5px 1px inset #eeedf7;
-        background: #fefefe;
-        padding: 35px 45px;
-        opacity: 1;
-        transition: opacity ease 0.5s;
+
         user-select: none;
         &.spun {
           opacity: 0;
         }
       }
-    }
-  }
-
-  .actions {
-    position: absolute;
-    top: 30px;
-    left: 30px;
-    width: fit-content;
-    height: fit-content;
-
-    .add-button {
-      border-radius: 40px;
-      border: none;
-      width: 80px;
-      height: 80px;
-      display: flex;
-      align-items: center;
-      justify-content: flex-start;
-      color: #9570ba;
-      box-shadow: 0 0 5px 1px inset #eeedf7;
-      background: #fefefe;
-      gap: 10px;
-      padding: 0 28px;
-
-      transition: width ease 0.5s;
-      &.text {
-        width: 300px;
-      }
-
-      .plus-container {
-        font-weight: bolder;
-        font-size: 40px;
-        font-family: "Varela Round";
-      }
-
-      .text-container {
-        font-size: 20px;
-        overflow: hidden;
-        white-space: nowrap;
-        font-family: "Varela Round";
-        &.hidden {
-          animation-duration: 500ms;
-          animation-name: animatesign;
-          animation-fill-mode: both;
-        }
-      }
-    }
-    .add-button:disabled {
-      display: none;
     }
   }
 

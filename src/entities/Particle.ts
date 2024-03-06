@@ -1,26 +1,26 @@
 import { Ref, ref } from "vue";
 import { Point } from "../types";
 import Triangle, { correctPositionInPersp } from "./Triangle";
-import { purpleYellow, redGreen } from "./../assets/colors";
+import { pallete } from "./../assets/colors";
 import { getHasIntersection, getReflection } from "../utils/reflectionUtils";
+import { getRandomIndex } from "../utils/arrayUtils";
+
+const arrR = [8, 13, 7];
+const arrAc = [0.1, 0.2, 0.4];
 
 export default class Particle {
   triangle: Triangle;
   ctx: Ref<CanvasRenderingContext2D | undefined> = ref();
   p: Point;
   pPrev: Point;
-  index = Math.random() > 0.5 ? 1 : 0;
-  palette: string[] = [purpleYellow, redGreen][this.index];
-  colorIndex = this.getColorIndex();
-  color1 = this.palette[this.colorIndex + 3];
-  color2 = this.palette[this.colorIndex];
+  color1 = getRandomIndex(pallete);
+  color2 = getRandomIndex(pallete);
   acY: number;
   r: number;
 
   constructor(ctx: Ref<CanvasRenderingContext2D>, triangle: Triangle) {
     this.triangle = triangle;
     this.ctx = ctx;
-    this.palette = [...this.palette];
 
     this.p = triangle.center.value;
     this.pPrev = triangle.center.value;
@@ -30,16 +30,11 @@ export default class Particle {
   }
 
   getParticleAc() {
-    let ac = 0;
-    while (ac < 0.05 || ac >= 0.3) {
-      ac = Math.floor(Math.random() * 100) / 100;
-    }
-
-    return ac;
+    return getRandomIndex(arrAc);
   }
 
   getParticleR() {
-    return [8, 13, 14, 18].find(() => Math.random() > 0.5) ?? 14;
+    return getRandomIndex(arrR);
   }
 
   redraw(triangle: Triangle) {
@@ -119,22 +114,6 @@ export default class Particle {
 
   updateTriangle(triangle: Triangle) {
     this.triangle = triangle;
-  }
-
-  // updateColorIndex() {
-  //   const lastIndex = this.palette.length - 1;
-  //   if (this.colorIndex >= lastIndex - 3) {
-  //     this.palette = this.palette.reverse();
-  //     this.colorIndex = 0;
-  //   } else {
-  //     this.colorIndex += 1;
-  //   }
-  // }
-
-  getColorIndex() {
-    const lastIndex = this.palette.length - 1;
-
-    return Math.floor(Math.random() * (lastIndex - 3));
   }
 
   updatePosition() {
